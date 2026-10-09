@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Node
+node_modules/
+dist/
+.vite/
+
+# Local runtime
+*.log
+.DS_Store
+
+# Browser profile
+brain.py/Max2.0/max_chrome_profile/
