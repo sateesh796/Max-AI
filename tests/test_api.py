@@ -1,5 +1,6 @@
 import base64
 import unittest
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
@@ -87,6 +88,21 @@ class MaxApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         payload = response.json()
         self.assertEqual(payload["action"]["type"], "assistant_response")
+
+    @patch("backend.api.urllib.request.urlopen")
+    def test_tts_endpoint_returns_audio(self, mock_urlopen):
+        upstream = mock_urlopen.return_value.__enter__.return_value
+        upstream.read.return_value = b"audio"
+
+        response = self.client.get("/api/tts", params={"text": "Hello", "lang": "en"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers["content-type"], "audio/mpeg")
+        self.assertEqual(response.content, b"audio")
+
+    def test_tts_endpoint_rejects_invalid_language(self):
+        response = self.client.get("/api/tts", params={"text": "Hello", "lang": "en-US"})
+        self.assertEqual(response.status_code, 422)
 
 
 if __name__ == "__main__":

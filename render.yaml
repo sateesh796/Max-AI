@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: max-ai
+    runtime: python
+    plan: free
+    buildCommand: pip install -r backend/requirements.txt && npm --prefix MAX-Frontend ci && npm --prefix MAX-Frontend run build
+    startCommand: uvicorn backend.api:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/status
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.4
+      - key: GROQ_API_KEY
+        sync: false

@@ -1,6 +1,6 @@
 import { arrayBufferToBase64 } from './base64.js';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+const API_BASE_URL = import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? 'http://127.0.0.1:8000' : '');
 
 function normalizeError(error, fallback) {
   if (error?.response?.data?.detail) return error.response.data.detail;

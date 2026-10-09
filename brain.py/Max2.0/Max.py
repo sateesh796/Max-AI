@@ -17,8 +17,12 @@ import difflib
 from collections import deque
 
 import numpy as np
-import pyautogui
 from groq import Groq
+
+try:
+    import pyautogui
+except Exception:  # optional dependency; headless servers have no desktop display
+    pyautogui = None
 
 try:
     import sounddevice

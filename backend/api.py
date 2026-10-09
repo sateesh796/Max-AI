@@ -5,12 +5,15 @@ from __future__ import annotations
 import base64
 import binascii
 import struct
+import urllib.error
+import urllib.parse
+import urllib.request
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator
 
@@ -114,6 +117,45 @@ def voice(request: VoiceRequest) -> dict[str, Any]:
         return transcribe_voice(audio_bytes)
     except Exception as exc:  # pragma: no cover - safety boundary for runtime failures
         raise HTTPException(status_code=500, detail=f"Voice processing failed: {exc}") from exc
+
+
+@app.get("/api/tts")
+def text_to_speech(
+    text: str = Query(..., min_length=1, max_length=5000),
+    lang: str = Query(default="en", min_length=2, max_length=3, pattern=r"^[a-z]{2,3}$"),
+) -> Response:
+    text = text.strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="Text is required.")
+
+    chunks = []
+    remaining = text
+    while remaining:
+        split_at = min(150, len(remaining))
+        if split_at < len(remaining):
+            word_boundary = remaining.rfind(" ", 0, split_at + 1)
+            if word_boundary > 0:
+                split_at = word_boundary
+        chunks.append(remaining[:split_at].strip())
+        remaining = remaining[split_at:].strip()
+
+    audio = bytearray()
+    for chunk in chunks:
+        query = urllib.parse.urlencode({"ie": "UTF-8", "q": chunk, "tl": lang, "client": "tw-ob"})
+        request = urllib.request.Request(
+            f"https://translate.google.com/translate_tts?{query}",
+            headers={
+                "User-Agent": "Mozilla/5.0",
+                "Accept": "*/*",
+            },
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=20) as upstream:
+                audio.extend(upstream.read())
+        except urllib.error.URLError as exc:
+            raise HTTPException(status_code=502, detail="Text-to-speech service is unavailable.") from exc
+
+    return Response(content=bytes(audio), media_type="audio/mpeg")
 
 
 @app.get("/")
