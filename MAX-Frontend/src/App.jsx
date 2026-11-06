@@ -493,7 +493,25 @@ export default function App() {
       }
 
       const answer = response?.response || activeLangObj.readyResponse;
-      const action = response?.action || { type: 'assistant_response' };
+      let action = response?.action || { type: 'assistant_response' };
+      if (action.type === 'open_url') {
+        let safeTarget = null;
+        try {
+          const parsed = new URL(action.target);
+          if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+            safeTarget = parsed.href;
+          }
+        } catch {
+          safeTarget = null;
+        }
+        if (safeTarget) {
+          const opened = window.open(safeTarget, '_blank', 'noopener,noreferrer');
+          if (opened === null) {
+            // Popup blocked: surface the URL as a clickable link in the chat.
+            action = { ...action, target: safeTarget, showLink: true };
+          }
+        }
+      }
       setConversation((prev) => [
         ...prev,
         { role: 'user', text: userPrompt },
@@ -864,6 +882,25 @@ export default function App() {
 
       {/* 4. Bottom Command Bar: Floating Capsule with Mic, Input, and Send */}
       <footer className="relative z-30 pb-6 sm:pb-8 pt-2">
+        {conversation
+          .filter((entry) => entry.role === 'assistant' && entry.action?.showLink && entry.action?.target)
+          .slice(-1)
+          .map((entry) => (
+            <div
+              key={entry.action.target}
+              className="mx-auto mb-3 max-w-xl rounded-xl border border-cyan-400/40 bg-slate-900/70 px-4 py-2 text-center text-sm text-cyan-100"
+            >
+              <span>{entry.text} </span>
+              <a
+                href={entry.action.target}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline break-all text-cyan-300 hover:text-cyan-200"
+              >
+                {entry.action.target}
+              </a>
+            </div>
+          ))}
         <CommandBar
           state={aiState}
           onVoiceToggle={handleToggleVoice}
